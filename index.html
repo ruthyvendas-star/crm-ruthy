@@ -539,16 +539,23 @@ label.fl{font-size:10px;color:#9A948A;text-transform:uppercase;letter-spacing:.0
       <div class="chart-card" style="border:2px dashed #A32D2D">
         <div class="chart-title" style="color:#A32D2D">🔧 Cotas do mês (só você vê)</div>
         <div style="font-size:11px;color:#9A948A;margin-bottom:.75rem">Mês: <span id="cotas-r-mes"></span></div>
-        <div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center">
-          <label style="font-size:11px;color:#5A5751">Quantidade de cotas:</label>
-          <input type="number" id="cr-num-cotas" min="1" value="6" style="font-size:11px;padding:5px;width:60px">
-          <button onclick="renderCotasInputs()" style="font-size:11px;padding:6px 10px;border-radius:6px;border:none;background:#9A948A;color:#fff;cursor:pointer">Atualizar</button>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:.5rem">
+          <div style="font-size:11px;color:#5A5751;grid-column:1/-1">Metas Vendido (cota 1 a 6)</div>
+          <input type="number" id="cr-tv-0" placeholder="Cota 1" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tv-1" placeholder="Cota 2" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tv-2" placeholder="Cota 3" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tv-3" placeholder="Cota 4" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tv-4" placeholder="Cota 5" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tv-5" placeholder="Cota 6" style="font-size:11px;padding:5px">
         </div>
-        <div id="cr-cotas-vendido" style="display:grid;gap:6px;margin-bottom:.75rem">
-          <div style="font-size:11px;color:#5A5751">Metas Vendido</div>
-        </div>
-        <div id="cr-cotas-faturado" style="display:grid;gap:6px;margin-bottom:.75rem">
-          <div style="font-size:11px;color:#5A5751">Metas Faturado</div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:.75rem">
+          <div style="font-size:11px;color:#5A5751;grid-column:1/-1">Metas Faturado (cota 1 a 6)</div>
+          <input type="number" id="cr-tf-0" placeholder="Cota 1" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tf-1" placeholder="Cota 2" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tf-2" placeholder="Cota 3" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tf-3" placeholder="Cota 4" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tf-4" placeholder="Cota 5" style="font-size:11px;padding:5px">
+          <input type="number" id="cr-tf-5" placeholder="Cota 6" style="font-size:11px;padding:5px">
         </div>
         <button onclick="saveCotasRegiaoTargets()" style="font-size:11px;padding:6px 12px;border-radius:6px;border:none;background:#0F6E56;color:#fff;cursor:pointer;margin-right:6px">Salvar metas</button>
         <button onclick="registrarMesRegiao()" style="font-size:11px;padding:6px 12px;border-radius:6px;border:none;background:#A32D2D;color:#fff;cursor:pointer">Registrar mês (arquivar e zerar)</button>
@@ -717,6 +724,7 @@ const AV_FG=['#0F6E56','#854F0B','#185FA5','#A32D2D','#534AB7','#993C1D'];
 let allMeta={}, allFechamentos={}, allTasks={}, allProspects={}, allPromoted={}, allCotas={};
 let cotasConsolidado=null;
 let currentRegion=null, currentSection='', openCode=null, openProspectIdx=null, currentUID=null, currentUserEmail=null;
+let searchIndexCache={};
 const ADMIN_EMAIL='ruthy.vendas@gmail.com';
 function isAdmin(){ return currentUserEmail===ADMIN_EMAIL; }
 let keepAllExpanded=false;
@@ -860,6 +868,19 @@ function regionClients(rid){
     Object.keys(m).forEach(k=>{ if(!FIXED.includes(k)) safe[k]=m[k]; });
     return {...c,...safe};
   });
+}
+
+function buildSearchIndex(rid){
+  const clients=regionClients(rid);
+  searchIndexCache[rid]=clients.map(c=>({
+    code:c.code,
+    name:c.name.toLowerCase(),
+    city:c.city.toLowerCase(),
+    cnpj:(c.cnpj||'').replace(/\D/g,''),
+    telefone:(c.telefone||'').replace(/\D/g,''),
+    codeDigits:(c.code||'').replace(/\D/g,''),
+    original:c
+  }));
 }
 
 function regionStats(rid){
@@ -1410,60 +1431,11 @@ function somaCotasAtuais(campo){
 }
 
 // ── Painel de cotas por região (aba Análises) ──
-window.renderCotasInputs=function(){
-  const numCotas=parseInt(document.getElementById('cr-num-cotas').value)||6;
-  const rid=currentRegion;
-  const c=ensureCotas(rid);
-  
-  // Ajusta arrays se necessário
-  while(c.targets_vendido.length<numCotas)c.targets_vendido.push(0);
-  c.targets_vendido=c.targets_vendido.slice(0,numCotas);
-  while(c.targets_faturado.length<numCotas)c.targets_faturado.push(0);
-  c.targets_faturado=c.targets_faturado.slice(0,numCotas);
-  
-  // Cria inputs para vendido
-  const vendidoDiv=document.getElementById('cr-cotas-vendido');
-  vendidoDiv.innerHTML='<div style="font-size:11px;color:#5A5751">Metas Vendido</div>';
-  const vendidoGrid=document.createElement('div');
-  vendidoGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px';
-  for(let i=0;i<numCotas;i++){
-    const inp=document.createElement('input');
-    inp.type='number';
-    inp.id='cr-tv-'+i;
-    inp.placeholder='Cota '+(i+1);
-    inp.style.cssText='font-size:11px;padding:5px';
-    inp.value=c.targets_vendido[i]||'';
-    vendidoGrid.appendChild(inp);
-  }
-  vendidoDiv.appendChild(vendidoGrid);
-  
-  // Cria inputs para faturado
-  const faturadoDiv=document.getElementById('cr-cotas-faturado');
-  faturadoDiv.innerHTML='<div style="font-size:11px;color:#5A5751">Metas Faturado</div>';
-  const faturadoGrid=document.createElement('div');
-  faturadoGrid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px';
-  for(let i=0;i<numCotas;i++){
-    const inp=document.createElement('input');
-    inp.type='number';
-    inp.id='cr-tf-'+i;
-    inp.placeholder='Cota '+(i+1);
-    inp.style.cssText='font-size:11px;padding:5px';
-    inp.value=c.targets_faturado[i]||'';
-    faturadoGrid.appendChild(inp);
-  }
-  faturadoDiv.appendChild(faturadoGrid);
-};
-
 window.saveCotasRegiaoTargets=async function(){
   const rid=currentRegion;
   const c=ensureCotas(rid);
-  const numCotas=parseInt(document.getElementById('cr-num-cotas').value)||6;
-  c.targets_vendido=[];
-  c.targets_faturado=[];
-  for(let i=0;i<numCotas;i++){
-    c.targets_vendido.push(Number(document.getElementById('cr-tv-'+i).value)||0);
-    c.targets_faturado.push(Number(document.getElementById('cr-tf-'+i).value)||0);
-  }
+  c.targets_vendido=[0,1,2,3,4,5].map(i=>Number(document.getElementById('cr-tv-'+i).value)||0);
+  c.targets_faturado=[0,1,2,3,4,5].map(i=>Number(document.getElementById('cr-tf-'+i).value)||0);
   await saveRegion(rid);
   document.getElementById('cotas-r-status').textContent='Metas salvas!';
   renderCotasRegiao();
@@ -1485,8 +1457,8 @@ window.registrarMesRegiao=async function(){
   });
   if(c.historico.length>12)c.historico=c.historico.slice(-12);
   c.mes=currentMonthStr();
-  c.targets_vendido=[];
-  c.targets_faturado=[];
+  c.targets_vendido=[0,0,0,0,0,0];
+  c.targets_faturado=[0,0,0,0,0,0];
   c.atual_vendido=0;
   c.atual_faturado=0;
   await saveRegion(rid);
@@ -1501,15 +1473,14 @@ function renderCotasRegiao(){
   const rid=currentRegion;
   const c=ensureCotas(rid);
   document.getElementById('cotas-r-mes').textContent=c.mes;
-  const numCotas=c.targets_vendido.length||6;
-  document.getElementById('cr-num-cotas').value=numCotas;
-  renderCotasInputs();
+  [0,1,2,3,4,5].forEach(i=>{
+    document.getElementById('cr-tv-'+i).value=c.targets_vendido[i]||'';
+    document.getElementById('cr-tf-'+i).value=c.targets_faturado[i]||'';
+  });
   document.getElementById('cr-atual-vendido').textContent=fmtBRL(c.atual_vendido);
   document.getElementById('cr-atual-faturado').textContent=fmtBRL(c.atual_faturado);
-  const hitV=cotaHit(c.atual_vendido,c.targets_vendido);
-  const hitF=cotaHit(c.atual_faturado,c.targets_faturado);
-  document.getElementById('cr-hit-vendido').textContent=hitV+'/'+numCotas;
-  document.getElementById('cr-hit-faturado').textContent=hitF+'/'+numCotas;
+  document.getElementById('cr-hit-vendido').textContent=cotaHit(c.atual_vendido,c.targets_vendido)+'/6';
+  document.getElementById('cr-hit-faturado').textContent=cotaHit(c.atual_faturado,c.targets_faturado)+'/6';
   renderChartCotas('chartCotasRegiao',c.historico||[]);
 }
 
@@ -1642,15 +1613,17 @@ function debouncedRenderClientes(){
 
 function renderClientes(){
   document.getElementById('keep-expanded-toggle').checked=keepAllExpanded;
+  if(!searchIndexCache[currentRegion]){buildSearchIndex(currentRegion);}
   const q=(document.getElementById('search-input').value||'').toLowerCase();
   const st=document.getElementById('filter-status').value;
   const ci=document.getElementById('filter-cidade').value;
-  let list=regionClients(currentRegion).filter(c=>{
-    if(q&&!(c.name+c.city+c.code).toLowerCase().includes(q))return false;
+  let list=searchIndexCache[currentRegion].filter(idx=>{
+    const c=idx.original;
+    if(q&&!(idx.name+idx.city+idx.code).includes(q))return false;
     if(st&&statusOf(c)!==st)return false;
     if(ci&&c.city!==ci)return false;
     return true;
-  }).sort((a,b)=>a.city.localeCompare(b.city,'pt-BR')||a.name.localeCompare(b.name,'pt-BR'));
+  }).map(idx=>idx.original).sort((a,b)=>a.city.localeCompare(b.city,'pt-BR')||a.name.localeCompare(b.name,'pt-BR'));
   const meta=allMeta[currentRegion]||{};
   const allRegionClients=regionClients(currentRegion);
   const matrizCodesInUse=new Set(allRegionClients.filter(x=>x.matriz_code).map(x=>x.matriz_code));

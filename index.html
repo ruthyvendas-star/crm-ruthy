@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRM Ruthy</title>
-<meta property="og:title" content="CRM Ruthy">
+<title>CRM - Vendas</title>
+<meta property="og:title" content="CRM - Vendas">
 <meta property="og:description" content="Sistema de gestão de clientes e vendas — acesse com seu login.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://ruthyvendas-star.github.io/crm-vendas/">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="CRM Ruthy">
+<meta name="twitter:title" content="CRM - Vendas">
 <meta name="twitter:description" content="Sistema de gestão de clientes e vendas — acesse com seu login.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <style>
@@ -220,8 +220,8 @@ label.fl{font-size:10px;color:#9A948A;text-transform:uppercase;letter-spacing:.0
 <!-- HOME -->
 <div id="page-home">
   <div class="home-header">
-    <div class="home-eyebrow">Ingrax · Vendedor Interno</div>
-    <div class="home-title">CRM Ruthy</div>
+    <div class="home-eyebrow">Meu Negócio · Vendas</div>
+    <div class="home-title">CRM Vendas</div>
     <div class="home-sub">Selecione uma região para começar</div>
   </div>
   <div class="home-kpi" id="home-kpi"></div>
@@ -691,15 +691,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// Config do projeto Firebase "crm-ruthy" (o mesmo que você já usa).
+// Config do projeto Firebase "crm-vendas-8c65f".
 const firebaseConfig = {
-  apiKey: "AIzaSyA9t9XI1KRxFNdLmwb7vUgID14tOwm10v8",
-  authDomain: "crm-ruthy.firebaseapp.com",
-  projectId: "crm-ruthy",
-  storageBucket: "crm-ruthy.firebasestorage.app",
-  messagingSenderId: "592459564910",
-  appId: "1:592459564910:web:9b260fa400cb006bbf637f",
-  measurementId: "G-6H0LSZ18PJ"
+  apiKey: "AIzaSyCRRFyirEMT7akehelicbwCvgQlbi0JLRI",
+  authDomain: "crm-vendas-8c65f.firebaseapp.com",
+  projectId: "crm-vendas-8c65f",
+  storageBucket: "crm-vendas-8c65f.firebasestorage.app",
+  messagingSenderId: "783272563364",
+  appId: "1:783272563364:web:d063216bf8ba4815ec8c31"
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -707,8 +706,6 @@ const auth = getAuth(app);
 
 let REGIONS_RAW = {};
 const REGION_COLORS = {};
-const DEFAULT_REGIONS = {"062": {"name": "Porto Alegre e Região", "uf": "RS"}, "315": {"name": "Ponta Grossa", "uf": "PR"}, "316": {"name": "Cascavel", "uf": "PR"}, "320": {"name": "L1 CWB", "uf": "PR"}, "080": {"name": "Novo Hamburgo", "uf": "RS"}};
-const DEFAULT_COLORS = {"062": "#2a78d6", "315": "#0F6E56", "316": "#854F0B", "320": "#534AB7", "080": "#A32D2D"};
 const PROSPECT_SEED = {};
 const STATUS_CFG = {
   nao_definido:{label:'Não definido',color:'#888780',bg:'#F1EFE8'},
@@ -722,7 +719,6 @@ const AV_BG=['#E1F5EE','#FAEEDA','#E6F1FB','#FCEBEB','#EEEDFE','#FAECE7'];
 const AV_FG=['#0F6E56','#854F0B','#185FA5','#A32D2D','#534AB7','#993C1D'];
 
 let allMeta={}, allFechamentos={}, allTasks={}, allProspects={}, allPromoted={}, allCotas={};
-let cotasConsolidado=null;
 let currentRegion=null, currentSection='', openCode=null, openProspectIdx=null, currentUID=null, currentUserEmail=null;
 const ADMIN_EMAIL='ruthy.vendas@gmail.com';
 function isAdmin(){ return currentUserEmail===ADMIN_EMAIL; }
@@ -772,7 +768,7 @@ async function ensureRegionLoaded(rid){
 async function loadRegionMeta(rid){
   setSyncStatus('','Carregando...');
   try{
-    const snap=await getDoc(doc(db,'regioes',rid));
+    const snap=await getDoc(doc(db,'users',currentUID,'regioes',rid));
     if(snap.exists()){
       const d=snap.data();
       allMeta[rid]=d.meta||{};
@@ -801,7 +797,7 @@ function subscribeRegion(rid){
   // Unsubscribe previous
   unsubListeners.forEach(u=>u());
   unsubListeners=[];
-  const unsub=onSnapshot(doc(db,'regioes',rid),(snap)=>{
+  const unsub=onSnapshot(doc(db,'users',currentUID,'regioes',rid),(snap)=>{
     if(!snap.exists())return;
     const d=snap.data();
     const newMeta=d.meta||{};
@@ -845,7 +841,7 @@ async function saveRegion(rid){
   localStorage.setItem(lsKey('crm_prospects',rid),JSON.stringify(data.prospects));
   localStorage.setItem(lsKey('crm_promoted',rid),JSON.stringify(data.promoted));
   localStorage.setItem(lsKey('crm_cotas',rid),JSON.stringify(data.cotas));
-  await fbSet('regioes/'+rid,data);
+  await fbSet('users/'+currentUID+'/regioes/'+rid,data);
 }
 
 // ── UTILS ──
@@ -1392,12 +1388,12 @@ function ensureCotas(rid){
 
 async function loadCotasConsolidado(){
   try{
-    const snap=await getDoc(doc(db,'config','cotas_consolidado'));
+    const snap=await getDoc(doc(db,'users',currentUID,'config','cotas_consolidado'));
     cotasConsolidado=snap.exists()?snap.data():null;
   }catch(e){ console.error('Falha ao carregar cotas consolidadas',e); }
 }
 async function saveCotasConsolidado(){
-  await fbSet('config/cotas_consolidado',cotasConsolidado);
+  await fbSet('users/'+currentUID+'/config/cotas_consolidado',cotasConsolidado);
 }
 function ensureCotasConsolidado(){
   if(!cotasConsolidado){
@@ -1600,10 +1596,13 @@ function debouncedRenderClientes(){
 function renderClientes(){
   document.getElementById('keep-expanded-toggle').checked=keepAllExpanded;
   const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const qDigits=q.replace(/\D/g,'');
   const st=document.getElementById('filter-status').value;
   const ci=document.getElementById('filter-cidade').value;
   let list=regionClients(currentRegion).filter(c=>{
-    if(q&&!(c.name+c.city+c.code).toLowerCase().includes(q))return false;
+    const textMatch=(c.name+c.city+c.code+(c.cnpj||'')+(c.telefone||'')).toLowerCase().includes(q);
+    const digitsMatch=qDigits&&((c.cnpj||'').replace(/\D/g,'').includes(qDigits)||(c.telefone||'').replace(/\D/g,'').includes(qDigits)||(c.code||'').replace(/\D/g,'').includes(qDigits));
+    if(q&&!textMatch&&!digitsMatch)return false;
     if(st&&statusOf(c)!==st)return false;
     if(ci&&c.city!==ci)return false;
     return true;
@@ -2263,7 +2262,7 @@ const REGION_PALETTE=['#0F6E56','#2a78d6','#854F0B','#534AB7','#A32D2D','#0B7285
 
 async function loadRegionsConfig(){
   try{
-    const snap=await getDoc(doc(db,'config','regions'));
+    const snap=await getDoc(doc(db,'users',currentUID,'config','regions'));
     if(snap.exists()){
       const d=snap.data();
       const regs=d.regions||{};
@@ -2273,14 +2272,9 @@ async function loadRegionsConfig(){
         REGIONS_RAW[rid]={name:regs[rid].name,uf:regs[rid].uf||'',clients:[]};
       });
       Object.assign(REGION_COLORS,colors);
-    }else{
-      // primeira vez: usa as regiões conhecidas como ponto de partida
-      Object.keys(DEFAULT_REGIONS).forEach(rid=>{
-        REGIONS_RAW[rid]={name:DEFAULT_REGIONS[rid].name,uf:DEFAULT_REGIONS[rid].uf,clients:[]};
-      });
-      Object.assign(REGION_COLORS,DEFAULT_COLORS);
-      await saveRegionsConfig();
     }
+    // se não existe ainda, começa sem nenhuma região — o usuário adiciona
+    // manualmente ou uma é criada sozinha ao importar uma planilha.
   }catch(e){
     console.error('Falha ao carregar configuração de regiões',e);
   }
@@ -2289,7 +2283,7 @@ async function loadRegionsConfig(){
 async function saveRegionsConfig(){
   const regs={};
   Object.keys(REGIONS_RAW).forEach(rid=>{ regs[rid]={name:REGIONS_RAW[rid].name,uf:REGIONS_RAW[rid].uf||''}; });
-  await fbSet('config/regions',{regions:regs,colors:REGION_COLORS});
+  await fbSet('users/'+currentUID+'/config/regions',{regions:regs,colors:REGION_COLORS});
 }
 
 function nextRegionColor(){
@@ -2330,8 +2324,6 @@ window.setRegionUf=async function(rid,val){
   await saveRegionsConfig();
   renderHome();
 };
-
-
 
 window.openHelp=function(){
   document.getElementById('help-modal-overlay').style.display='flex';

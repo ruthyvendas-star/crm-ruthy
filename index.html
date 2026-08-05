@@ -1605,8 +1605,8 @@ function renderClientes(){
   const clients=regionClients(currentRegion);
   let list=clients.filter(c=>{
     if(q){
-      const textConcat=(c.name+c.city+c.code).toLowerCase();
-      if(!textConcat.includes(q))return false;
+      const ctext=(c.name+c.city+c.code).toLowerCase();
+      if(!ctext.includes(q))return false;
     }
     if(st&&statusOf(c)!==st)return false;
     if(ci&&c.city!==ci)return false;
@@ -1701,6 +1701,7 @@ function renderGraficos(){
   const cC={};clients.forEach(c=>{cC[c.city]=(cC[c.city]||0)+1;});
   const sC=Object.entries(cC).sort((a,b)=>b[1]-a[1]).slice(0,8);
   if(chartC)chartC.destroy();
+  chartC=new Chart(document.getElementById('chartCidade'),{type:'bar',data:{labels:sC.map(x=>x[0]),datasets:[{label:'Clientes',data:sC.map(x=>x[1]),backgroundColor:REGION_COLORS[currentRegion]+'22',borderColor:REGION_COLORS[currentRegion],borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#9A948A'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#9A948A',stepSize:1},grid:{color:'#E0DAD0'}}}}});
   chartC=new Chart(document.getElementById('chartCidade'),{type:'bar',data:{labels:sC.map(x=>x[0]),datasets:[{label:'Clientes',data:sC.map(x=>x[1]),backgroundColor:REGION_COLORS[currentRegion]+'22',borderColor:REGION_COLORS[currentRegion],borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#9A948A'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#9A948A',stepSize:1},grid:{color:'#E0DAD0'}}}}});
   const sK={};clients.forEach(c=>{const s=statusOf(c);sK[s]=(sK[s]||0)+1;});
   const sk=Object.keys(sK);

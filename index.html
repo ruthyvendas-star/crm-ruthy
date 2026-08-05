@@ -498,8 +498,7 @@ label.fl{font-size:10px;color:#9A948A;text-transform:uppercase;letter-spacing:.0
 
   <div id="section-clientes" style="display:none">
     <div class="search-row">
-      <input type="text" id="search-input" placeholder="Buscar por nome, cidade ou código...">
-      <button onclick="renderClientes()" style="padding:8px 15px;background:#854F0B;color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer;margin-left:8px">🔍 Buscar</button>
+      <input type="text" id="search-input" placeholder="Buscar por nome, cidade ou código..." oninput="debouncedRenderClientes()">
       <select id="filter-status" onchange="renderClientes()">
         <option value="">Todos os status</option>
         <option value="nao_definido">Não definido</option>
@@ -1592,17 +1591,19 @@ function populateCidadeFilter(){
   document.getElementById('filter-cidade').innerHTML='<option value="">Todas as cidades</option>'+cidades.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
 
+let searchDebounceTimer=null;
+function debouncedRenderClientes(){
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer=setTimeout(renderClientes,220);
+}
+
 function renderClientes(){
   document.getElementById('keep-expanded-toggle').checked=keepAllExpanded;
   const q=(document.getElementById('search-input').value||'').toLowerCase();
   const st=document.getElementById('filter-status').value;
   const ci=document.getElementById('filter-cidade').value;
-  const clients=regionClients(currentRegion);
-  let list=clients.filter(c=>{
-    if(q){
-      const ctext=(c.name+c.city+c.code).toLowerCase();
-      if(!ctext.includes(q))return false;
-    }
+  let list=regionClients(currentRegion).filter(c=>{
+    if(q&&!(c.name+c.city+c.code).toLowerCase().includes(q))return false;
     if(st&&statusOf(c)!==st)return false;
     if(ci&&c.city!==ci)return false;
     return true;
@@ -1696,7 +1697,6 @@ function renderGraficos(){
   const cC={};clients.forEach(c=>{cC[c.city]=(cC[c.city]||0)+1;});
   const sC=Object.entries(cC).sort((a,b)=>b[1]-a[1]).slice(0,8);
   if(chartC)chartC.destroy();
-  chartC=new Chart(document.getElementById('chartCidade'),{type:'bar',data:{labels:sC.map(x=>x[0]),datasets:[{label:'Clientes',data:sC.map(x=>x[1]),backgroundColor:REGION_COLORS[currentRegion]+'22',borderColor:REGION_COLORS[currentRegion],borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#9A948A'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#9A948A',stepSize:1},grid:{color:'#E0DAD0'}}}}});
   chartC=new Chart(document.getElementById('chartCidade'),{type:'bar',data:{labels:sC.map(x=>x[0]),datasets:[{label:'Clientes',data:sC.map(x=>x[1]),backgroundColor:REGION_COLORS[currentRegion]+'22',borderColor:REGION_COLORS[currentRegion],borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#9A948A'},grid:{display:false}},y:{ticks:{font:{size:10},color:'#9A948A',stepSize:1},grid:{color:'#E0DAD0'}}}}});
   const sK={};clients.forEach(c=>{const s=statusOf(c);sK[s]=(sK[s]||0)+1;});
   const sk=Object.keys(sK);
